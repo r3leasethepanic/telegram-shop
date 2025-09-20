@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import pkg from "pg";
+import fs from "fs";
 
 dotenv.config();
 const { Pool } = pkg;
@@ -8,33 +9,25 @@ const { Pool } = pkg;
 const app = express();
 app.use(express.json());
 
-// Подключение к БД через пул
-let pool;
-try {
-  pool = new Pool({
-    host: process.env.POSTGRESQL_HOST,
-    port: process.env.POSTGRESQL_PORT,
-    user: process.env.POSTGRESQL_USER,
-    password: process.env.POSTGRESQL_PASSWORD,
-    database: process.env.POSTGRESQL_DBNAME,
-    ssl: { rejectUnauthorized: false } // нужно для Timeweb
-  });
-  console.log("✅ Pool initialized");
-} catch (err) {
-  console.error("❌ Ошибка инициализации пула:", err.message);
-}
+// Читаем сертификат
+const sslCert = fs.readFileSync(new URL("./certs/root.crt", import.meta.url));
+
+const pool = new Pool({
+  host: process.env.POSTGRESQL_HOST,
+  port: process.env.POSTGRESQL_PORT,
+  user: process.env.POSTGRESQL_USER,
+  password: process.env.POSTGRESQL_PASSWORD,
+  database: process.env.POSTGRESQL_DBNAME,
+  ssl: { ca: sslCert }
+});
 
 // базовый роут
 app.get("/", (req, res) => {
-  res.send("✅ Backend работает + dotenv + pg");
+  res.send("✅ Backend работает + dotenv + pg + cert");
 });
 
-// тестовый роут для БД
+// тестовый роут для проверки БД
 app.get("/api/db-test", async (req, res) => {
-  if (!pool) {
-    return res.status(500).json({ ok: false, error: "Нет подключения к БД" });
-  }
-
   try {
     const result = await pool.query("SELECT NOW()");
     res.json({ ok: true, time: result.rows[0] });
