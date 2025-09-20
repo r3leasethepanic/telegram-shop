@@ -1,27 +1,58 @@
 import express from "express";
 import fs from "fs";
+import path from "path";
+import dotenv from "dotenv";
 import pkg from "pg";
+import { fileURLToPath } from "url";
+
+dotenv.config();
 
 const { Client } = pkg;
 const app = express();
 app.use(express.json());
 
-// Настраиваем клиента PostgreSQL напрямую
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const {
+  POSTGRESQL_HOST,
+  POSTGRESQL_PORT,
+  POSTGRESQL_USER,
+  POSTGRESQL_PASSWORD,
+  POSTGRESQL_DBNAME,
+} = process.env;
+
+if (!POSTGRESQL_HOST || !POSTGRESQL_USER || !POSTGRESQL_PASSWORD || !POSTGRESQL_DBNAME) {
+  console.error("❌ Missing PostgreSQL configuration in environment variables");
+  process.exit(1);
+}
+
+const sslOptions = {
+  ca: fs.readFileSync(path.join(__dirname, "certs/root.crt"), "utf8"),
+  rejectUnauthorized: true,
+};
+
 const client = new Client({
-  user: "gen_user",
-  host: "ebbc81ddef8824fd1188953b.twc1.net", // можно и IP, но лучше домен
-  database: "default_db",
-  password: "g1oGc7p+20dmgz",
-  port: 5432,
-  ssl: {
-    ca: fs.readFileSync("./certs/root.crt").toString(),
-  },
+  host: POSTGRESQL_HOST,
+  port: Number(POSTGRESQL_PORT) || 5432,
+  user: POSTGRESQL_USER,
+  password: POSTGRESQL_PASSWORD,
+  database: POSTGRESQL_DBNAME,
+  ssl: sslOptions,
+  connectionTimeoutMillis: 5000,
 });
 
 // Подключение к базе
 client.connect()
   .then(() => console.log("✅ Connected to DB"))
-  .catch(err => console.error("❌ DB connection error:", err.message));
+  .catch((err) => {
+    console.error("❌ DB connection error:", err.message);
+    console.error("ℹ️ Check that your public IP is allowed in the Timeweb panel and that SSL certificates match the server.");
+  });
+
+client.on("error", (err) => {
+  console.error("❌ DB client error:", err.message);
+});
 
 // Базовый роут
 app.get("/", (req, res) => {
