@@ -15,10 +15,7 @@ const PRODUCTS = [
       "https://picsum.photos/seed/ear1a/800/800",
       "https://picsum.photos/seed/ear1b/800/800"
     ],
-    attributes: {
-      color: ["silver", "gold"],
-      size: ["S", "M", "L"]
-    },
+    attributes: { color: ["silver", "gold"], size: ["S", "M", "L"] },
     status: "active"
   },
   {
@@ -31,9 +28,7 @@ const PRODUCTS = [
       "https://picsum.photos/seed/bro1a/800/800",
       "https://picsum.photos/seed/bro1b/800/800"
     ],
-    attributes: {
-      color: ["emerald", "ruby"]
-    },
+    attributes: { color: ["emerald", "ruby"] },
     status: "active"
   }
 ];
@@ -70,7 +65,6 @@ app.post("/api/orders", (req, res) => {
     return res.status(400).json({ error: "Bad request" });
   }
 
-  // Пересчёт суммы
   let total = 0;
   const detailedItems = items.map(({ id, qty }) => {
     const product = PRODUCTS.find(p => p.id === id);
@@ -101,14 +95,33 @@ app.post("/api/orders", (req, res) => {
   };
 
   ORDERS.push(order);
-
   res.json({ ok: true, orderId: order.id });
 });
 
-// Получить все заказы (админка)
+// Получить все заказы
 app.get("/api/orders", (req, res) => {
   res.json(ORDERS);
 });
 
+// Получить один заказ
+app.get("/api/orders/:id", (req, res) => {
+  const order = ORDERS.find(o => o.id === req.params.id);
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  res.json(order);
+});
+
+// Обновить статус заказа
+app.put("/api/orders/:id", (req, res) => {
+  const order = ORDERS.find(o => o.id === req.params.id);
+  if (!order) return res.status(404).json({ error: "Order not found" });
+
+  const { status } = req.body;
+  if (!status) return res.status(400).json({ error: "Status is required" });
+
+  order.status = status;
+  res.json({ ok: true, id: order.id, status: order.status });
+});
+
+/** ---------- Запуск ---------- **/
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`✅ API running on ${port}`));
