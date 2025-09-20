@@ -1,25 +1,36 @@
-const express = require('express');
-const { Pool } = require('pg');
-require('dotenv').config();
+import express from "express";
+import pg from "pg";
+import dotenv from "dotenv";
+
+dotenv.config();
+const { Pool } = pg;
 
 const app = express();
 app.use(express.json());
 
-// Подключение к БД через .env
+// Собираем строку подключения из переменных окружения
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // для Timeweb
+  host: process.env.POSTGRESQL_HOST,
+  port: process.env.POSTGRESQL_PORT,
+  user: process.env.POSTGRESQL_USER,
+  password: process.env.POSTGRESQL_PASSWORD,
+  database: process.env.POSTGRESQL_DBNAME,
+  ssl: { rejectUnauthorized: false } // обязательно для Timeweb
 });
 
 // Тестовый эндпоинт
-app.get('/api/db-test', async (req, res) => {
+app.get("/api/db-test", async (_req, res) => {
   try {
-    const result = await pool.query('SELECT NOW()');
+    const result = await pool.query("SELECT NOW()");
     res.json({ ok: true, time: result.rows[0] });
   } catch (err) {
-    console.error(err);
+    console.error("Ошибка подключения к БД:", err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-app.listen(3000, () => console.log('Server running on port 3000'));
+// Запуск сервера
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});
