@@ -1,9 +1,14 @@
 import express from "express";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
+app.use(express.json());
 
+// базовый роут
 app.get("/", (req, res) => {
-  res.send("✅ Backend работает на 3000!");
+  res.send("✅ Backend работает + dotenv подключен");
 });
 
 const PORT = process.env.PORT || 3000;
