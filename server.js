@@ -4,7 +4,6 @@ const app = express();
 app.use(express.json());
 
 /** ---------- Моки продуктов ---------- **/
-
 const PRODUCTS = [
   {
     id: "ear-001",
@@ -39,6 +38,9 @@ const PRODUCTS = [
   }
 ];
 
+/** ---------- Заказы ---------- **/
+const ORDERS = [];
+
 /** ---------- Эндпоинты ---------- **/
 
 // Healthcheck
@@ -61,13 +63,51 @@ app.get("/api/products/:id", (req, res) => {
   res.json(item);
 });
 
-// Заказы (пока заглушка)
+// Создать заказ
 app.post("/api/orders", (req, res) => {
   const { name, phone, items } = req.body || {};
-  if (!name || !phone || !Array.isArray(items)) {
+  if (!name || !phone || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: "Bad request" });
   }
-  res.json({ ok: true, orderId: "ord_" + Date.now() });
+
+  // Пересчёт суммы
+  let total = 0;
+  const detailedItems = items.map(({ id, qty }) => {
+    const product = PRODUCTS.find(p => p.id === id);
+    if (!product) return null;
+    const lineTotal = product.price * qty;
+    total += lineTotal;
+    return {
+      id: product.id,
+      title: product.title,
+      price: product.price,
+      qty,
+      lineTotal
+    };
+  }).filter(Boolean);
+
+  if (detailedItems.length === 0) {
+    return res.status(400).json({ error: "No valid products" });
+  }
+
+  const order = {
+    id: "ord_" + Date.now(),
+    name,
+    phone,
+    items: detailedItems,
+    total,
+    status: "new",
+    createdAt: new Date().toISOString()
+  };
+
+  ORDERS.push(order);
+
+  res.json({ ok: true, orderId: order.id });
+});
+
+// Получить все заказы (админка)
+app.get("/api/orders", (req, res) => {
+  res.json(ORDERS);
 });
 
 const port = process.env.PORT || 3000;
