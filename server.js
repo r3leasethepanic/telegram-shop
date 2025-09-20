@@ -5,23 +5,31 @@ require("dotenv").config();
 const app = express();
 app.use(express.json());
 
-// Подключение к БД
-const pool = new Pool({
-  host: process.env.POSTGRESQL_HOST,
-  port: process.env.POSTGRESQL_PORT,
-  user: process.env.POSTGRESQL_USER,
-  password: process.env.POSTGRESQL_PASSWORD,
-  database: process.env.POSTGRESQL_DBNAME,
-  ssl: { rejectUnauthorized: false } // нужно для Timeweb
-});
+// Пробуем подключение к БД
+let pool;
+try {
+  pool = new Pool({
+    host: process.env.POSTGRESQL_HOST,
+    port: process.env.POSTGRESQL_PORT,
+    user: process.env.POSTGRESQL_USER,
+    password: process.env.POSTGRESQL_PASSWORD,
+    database: process.env.POSTGRESQL_DBNAME,
+    ssl: { rejectUnauthorized: false }
+  });
+  console.log("✅ Pool initialized");
+} catch (err) {
+  console.error("❌ Ошибка инициализации пула:", err.message);
+}
 
-// Тестовый роут для проверки
+// Тестовый роут
 app.get("/", (req, res) => {
-  res.send("✅ Backend работает и подключен к PostgreSQL (попробуй /api/db-test)");
+  res.send("✅ Backend работает (БД проверяй через /api/db-test)");
 });
 
-// Проверка БД
+// Тестовый запрос к БД
 app.get("/api/db-test", async (req, res) => {
+  if (!pool) return res.status(500).json({ ok: false, error: "Нет подключения к БД" });
+
   try {
     const result = await pool.query("SELECT NOW()");
     res.json({ ok: true, time: result.rows[0] });
