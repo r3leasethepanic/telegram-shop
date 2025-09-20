@@ -2,37 +2,41 @@ import express from "express";
 import fs from "fs";
 import pkg from "pg";
 
-const { Pool } = pkg;
+const { Client } = pkg;
 const app = express();
-
 app.use(express.json());
 
-// Подключение к БД через отдельные переменные .env
-const pool = new Pool({
-  host: process.env.POSTGRESQL_HOST,
-  port: process.env.POSTGRESQL_PORT,
-  user: process.env.POSTGRESQL_USER,
-  password: process.env.POSTGRESQL_PASSWORD,
-  database: process.env.POSTGRESQL_DBNAME,
+// Настраиваем клиента PostgreSQL напрямую
+const client = new Client({
+  user: "gen_user",
+  host: "ebbc81ddef8824fd1188953b.twc1.net", // можно и IP, но лучше домен
+  database: "default_db",
+  password: "g1oGc7p+20dmgz",
+  port: 5432,
   ssl: {
-    ca: fs.readFileSync("./certs/root.crt").toString(), // загружаем сертификат
+    ca: fs.readFileSync("./certs/root.crt").toString(),
   },
 });
 
-// Тестовый эндпоинт для проверки БД
-app.get("/api/db-test", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT NOW()");
-    res.json({ ok: true, time: result.rows[0] });
-  } catch (err) {
-    console.error("DB error:", err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
+// Подключение к базе
+client.connect()
+  .then(() => console.log("✅ Connected to DB"))
+  .catch(err => console.error("❌ DB connection error:", err.message));
+
+// Базовый роут
+app.get("/", (req, res) => {
+  res.send("✅ Backend работает + прямое подключение к PostgreSQL");
 });
 
-// Проверка, что сервер поднялся
-app.get("/", (req, res) => {
-  res.send("✅ Backend работает и ждёт запросов!");
+// Тестовый эндпоинт
+app.get("/api/db-test", async (req, res) => {
+  try {
+    const result = await client.query("SELECT NOW()");
+    res.json({ ok: true, time: result.rows[0] });
+  } catch (err) {
+    console.error("❌ DB query error:", err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // Запуск сервера
